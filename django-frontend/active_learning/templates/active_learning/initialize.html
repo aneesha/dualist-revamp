@@ -1,0 +1,70 @@
+{% extends "active_learning/base.html" %}
+
+{% block title %}Initialize System{% endblock %}
+
+{% block content %}
+<h2>Initialize Active Learning System</h2>
+
+<div class="alert alert-info">
+    Configure the text processing pipeline and classifier parameters.
+</div>
+
+<form method="post">
+    {% csrf_token %}
+
+    <div class="form-group">
+        <label for="pipe_type">Text Processing Pipeline:</label>
+        <select name="pipe_type" id="pipe_type" required>
+            <option value="document">Document (Full text, unigrams, stopword removal)</option>
+            <option value="lines">Lines (Line-by-line, unigrams + bigrams)</option>
+            <option value="twitter">Twitter (Social media, emoticons, mentions, hashtags)</option>
+            <option value="entity">Entity (Named entities with orthographic features)</option>
+        </select>
+        <small>Choose the pipeline that matches your data type.</small>
+    </div>
+
+    <div class="form-group">
+        <label for="alpha">Alpha (Feature Prior Weight):</label>
+        <input type="number" name="alpha" id="alpha" value="100" step="0.1" min="0" required>
+        <small>Controls the strength of feature priors from expert labels. Higher = stronger influence. Default: 100</small>
+    </div>
+
+    <div class="form-group">
+        <label for="smoothing">Smoothing Parameter:</label>
+        <input type="number" name="smoothing" id="smoothing" value="1.0" step="0.1" min="0" required>
+        <small>Laplace smoothing for rare features. Default: 1.0</small>
+    </div>
+
+    <button type="submit" class="btn">Initialize System</button>
+</form>
+
+<h3 style="margin-top: 30px;">Pipeline Descriptions</h3>
+
+<div class="card">
+    <div class="card-title">Document Pipeline</div>
+    <p><strong>Use for:</strong> Full documents, articles, reviews</p>
+    <p><strong>Features:</strong> Unigrams (single words), HTML removal, lowercase, stopword filtering</p>
+    <p><strong>Example:</strong> Movie reviews, news articles, product descriptions</p>
+</div>
+
+<div class="card">
+    <div class="card-title">Lines Pipeline</div>
+    <p><strong>Use for:</strong> Short texts, sentences, line-by-line data</p>
+    <p><strong>Features:</strong> Unigrams + bigrams, no stopword removal</p>
+    <p><strong>Example:</strong> Search queries, short messages, survey responses</p>
+</div>
+
+<div class="card">
+    <div class="card-title">Twitter Pipeline</div>
+    <p><strong>Use for:</strong> Social media posts, tweets, informal text</p>
+    <p><strong>Features:</strong> Emoticons, @mentions, #hashtags, negation handling, bigrams</p>
+    <p><strong>Example:</strong> Tweet sentiment, social media monitoring</p>
+</div>
+
+<div class="card">
+    <div class="card-title">Entity Pipeline</div>
+    <p><strong>Use for:</strong> Named entity classification</p>
+    <p><strong>Features:</strong> Orthographic patterns, shape features, character types, affixes</p>
+    <p><strong>Example:</strong> Person/Organization/Location classification</p>
+</div>
+{% endblock %}

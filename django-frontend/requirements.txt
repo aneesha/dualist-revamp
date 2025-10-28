@@ -1,0 +1,7 @@
+# Django Frontend Requirements
+
+# Web Framework
+Django==4.2.7
+
+# HTTP Client
+requests==2.31.0

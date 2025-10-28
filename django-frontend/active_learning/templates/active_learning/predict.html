@@ -1,0 +1,34 @@
+{% extends "active_learning/base.html" %}
+
+{% block title %}Predict{% endblock %}
+
+{% block content %}
+<h2>Make Predictions</h2>
+
+<div class="alert alert-info">
+    Enter new texts (one per line) to classify using the trained model.
+</div>
+
+<form method="post">
+    {% csrf_token %}
+
+    <div class="form-group">
+        <label for="texts">Texts to Classify (one per line):</label>
+        <textarea name="texts" id="texts" rows="10" placeholder="Enter texts here, one per line..." required></textarea>
+    </div>
+
+    <button type="submit" class="btn">Classify Texts</button>
+</form>
+
+<h3 style="margin-top: 40px;">Example Inputs</h3>
+
+<div class="card">
+    <div class="card-title">Baseball vs Hockey Example</div>
+    <pre style="background: #f5f5f5; padding: 10px; border-radius: 3px;">
+The pitcher threw a fastball right down the middle of the plate
+The goalie made an incredible save in overtime
+He hit a home run in the bottom of the ninth inning
+The defenseman blocked the shot with his body
+    </pre>
+</div>
+{% endblock %}

@@ -1,0 +1,35 @@
+{% extends "active_learning/base.html" %}
+
+{% block title %}Prediction Results{% endblock %}
+
+{% block content %}
+<h2>Prediction Results</h2>
+
+<button onclick="history.back()" class="btn btn-secondary">← Back to Predict</button>
+
+<div style="margin-top: 30px;">
+    {% if predictions %}
+    {% for pred in predictions %}
+    <div class="card">
+        <div class="card-title">Text {{ forloop.counter }}</div>
+        <p><strong>Input:</strong> {{ pred.text }}</p>
+        <p><strong>Predicted Label:</strong> <span class="badge badge-primary">{{ pred.predicted_label }}</span></p>
+        <p><strong>Confidence:</strong> {{ pred.confidence|floatformat:4 }} ({{ pred.confidence|floatformat:1 }}%)</p>
+
+        <div style="margin-top: 10px;">
+            <strong>All Probabilities:</strong>
+            <ul>
+                {% for label, prob in pred.all_probabilities.items %}
+                <li>{{ label }}: {{ prob|floatformat:4 }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+    {% endfor %}
+    {% else %}
+    <div class="alert alert-info">
+        No predictions to display.
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

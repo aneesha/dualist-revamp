@@ -1,0 +1,346 @@
+{% extends "active_learning/base.html" %}
+
+{% block title %}Active Learning Loop{% endblock %}
+
+{% block extra_css %}
+<style>
+    .query-card {
+        background: white;
+        border: 2px solid #dee2e6;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 20px;
+        transition: border-color 0.3s;
+    }
+
+    .query-card:hover {
+        border-color: #667eea;
+    }
+
+    .prediction {
+        display: flex;
+        justify-content: space-between;
+        padding: 8px;
+        background: #f8f9fa;
+        margin: 5px 0;
+        border-radius: 4px;
+    }
+
+    .confidence-bar {
+        height: 20px;
+        background: linear-gradient(90deg, #28a745, #ffc107, #dc3545);
+        border-radius: 4px;
+        margin-top: 5px;
+    }
+
+    .features {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 10px;
+    }
+
+    .feature-tag {
+        background: #e7f3ff;
+        padding: 5px 10px;
+        border-radius: 4px;
+        font-size: 0.9em;
+        border: 1px solid #b3d9ff;
+    }
+
+    .llm-action {
+        margin-top: 15px;
+        display: flex;
+        gap: 10px;
+    }
+
+    .reasoning {
+        background: #fff3cd;
+        border: 1px solid #ffc107;
+        padding: 10px;
+        border-radius: 4px;
+        margin-top: 10px;
+        font-size: 0.9em;
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 15px;
+        margin-bottom: 30px;
+    }
+
+    .stat-box {
+        background: #f8f9fa;
+        padding: 15px;
+        border-radius: 8px;
+        text-align: center;
+        border: 2px solid #dee2e6;
+    }
+
+    .stat-number {
+        font-size: 2em;
+        font-weight: bold;
+        color: #667eea;
+    }
+
+    .stat-label {
+        font-size: 0.9em;
+        color: #666;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<h2>Active Learning Loop</h2>
+
+<div class="alert alert-info">
+    <strong>How it works:</strong> The system selects the most informative instances. The LLM labels them automatically,
+    and the classifier learns from these labels. This reduces LLM costs while maintaining accuracy.
+</div>
+
+<!-- Stats -->
+<div class="stats-grid">
+    <div class="stat-box">
+        <div class="stat-number">{{ status.n_labeled }}</div>
+        <div class="stat-label">Labeled Instances</div>
+    </div>
+    <div class="stat-box">
+        <div class="stat-number">{{ status.n_pool }}</div>
+        <div class="stat-label">Remaining Pool</div>
+    </div>
+    <div class="stat-box">
+        <div class="stat-number">{{ status.n_labeled_features }}</div>
+        <div class="stat-label">Labeled Features</div>
+    </div>
+    <div class="stat-box">
+        <div class="stat-number">{{ status.model_stats.n_labels }}</div>
+        <div class="stat-label">Classes</div>
+    </div>
+</div>
+
+<!-- Query Settings -->
+<div class="card">
+    <div class="card-title">Query Settings</div>
+    <form method="get" style="display: flex; gap: 15px; flex-wrap: wrap; align-items: end;">
+        <div class="form-group" style="margin-bottom: 0; flex: 1; min-width: 150px;">
+            <label for="n_instances">Instances to Query:</label>
+            <input type="number" name="n_instances" id="n_instances" value="5" min="1" max="20">
+        </div>
+        <div class="form-group" style="margin-bottom: 0; flex: 1; min-width: 150px;">
+            <label for="strategy">Strategy:</label>
+            <select name="strategy" id="strategy">
+                {% for s in strategies %}
+                <option value="{{ s }}" {% if s == 'margin' %}selected{% endif %}>{{ s|title }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group" style="margin-bottom: 0; flex: 1; min-width: 150px;">
+            <label for="n_features">Features per Label:</label>
+            <input type="number" name="n_features" id="n_features" value="5" min="1" max="20">
+        </div>
+        <button type="submit" class="btn">Update Queries</button>
+    </form>
+</div>
+
+<!-- Auto-label All Button -->
+<div style="margin: 20px 0;">
+    <button onclick="autoLabelAll()" class="btn btn-success">🤖 Auto-Label All with LLM</button>
+    <button onclick="location.reload()" class="btn btn-secondary">🔄 Refresh Queries</button>
+</div>
+
+<!-- Instance Queries -->
+{% if queries.instance_queries %}
+<h3>📄 Instance Queries ({{ queries.instance_queries|length }})</h3>
+
+{% for query in queries.instance_queries %}
+<div class="query-card" id="query-{{ forloop.counter }}">
+    <h4>Instance {{ forloop.counter }}: {{ query.instance_id }}</h4>
+
+    <!-- Feature Preview -->
+    <div class="features">
+        {% for feat in query.features %}
+        <span class="feature-tag">{{ feat }}</span>
+        {% endfor %}
+    </div>
+
+    <!-- Model Predictions (if available) -->
+    {% if query.predictions %}
+    <div style="margin-top: 15px;">
+        <strong>Model Predictions:</strong>
+        {% for pred in query.predictions %}
+        <div class="prediction">
+            <span>{{ pred.label }}</span>
+            <span style="color: #667eea; font-weight: bold;">{{ pred.probability|floatformat:3 }}</span>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- LLM Actions -->
+    <div class="llm-action">
+        <button onclick="llmLabel('{{ query.instance_id }}', {{ query.features|safe }}, {{ forloop.counter }})" class="btn">
+            🤖 Ask LLM to Label
+        </button>
+    </div>
+
+    <!-- LLM Response (will be filled by JavaScript) -->
+    <div id="llm-response-{{ forloop.counter }}" style="display: none;"></div>
+</div>
+{% endfor %}
+{% else %}
+<div class="alert alert-info">
+    No instance queries available. The pool may be empty or needs more labeled data to start.
+</div>
+{% endif %}
+
+<!-- Feature Queries -->
+{% if queries.feature_queries %}
+<h3 style="margin-top: 40px;">🔤 Feature Queries</h3>
+
+{% for label, features in queries.feature_queries.items %}
+<div class="card">
+    <div class="card-title">Label: {{ label }}</div>
+    <p><strong>Suggested features based on Mutual Information:</strong></p>
+    <div class="features">
+        {% for feat_obj in features %}
+        <span class="feature-tag" style="cursor: pointer;" onclick="llmLabelFeature('{{ feat_obj.feature }}', '{{ label }}')">
+            {{ feat_obj.feature }} (score: {{ feat_obj.score|floatformat:3 }})
+        </span>
+        {% endfor %}
+    </div>
+    <button onclick="llmLabelAllFeatures('{{ label }}', {{ features|safe }})" class="btn btn-secondary" style="margin-top: 10px;">
+        🤖 Label All Features with LLM
+    </button>
+</div>
+{% endfor %}
+{% endif %}
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const labels = {{ labels|safe }};
+    const taskDescription = "{{ task_description }}";
+
+    async function llmLabel(instanceId, features, queryNum) {
+        const text = features.join(' ');  // Simple text reconstruction
+
+        try {
+            const response = await fetch('/api/llm-label-instance/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    instance_id: instanceId,
+                    text: text,
+                    labels: labels,
+                    task_description: taskDescription
+                })
+            });
+
+            const result = await response.json();
+
+            if (result.status === 'success') {
+                const responseDiv = document.getElementById(`llm-response-${queryNum}`);
+                responseDiv.style.display = 'block';
+                responseDiv.innerHTML = `
+                    <div class="alert alert-success" style="margin-top: 15px;">
+                        <strong>✓ LLM Labeled:</strong> ${result.label}
+                        (Confidence: ${(result.confidence * 100).toFixed(1)}%)
+                    </div>
+                    <div class="reasoning">
+                        <strong>Reasoning:</strong> ${result.reasoning}
+                    </div>
+                `;
+
+                // Remove the query card after a delay
+                setTimeout(() => {
+                    document.getElementById(`query-${queryNum}`).style.opacity = '0.5';
+                }, 1000);
+            } else {
+                alert('Error: ' + (result.detail || 'Failed to label instance'));
+            }
+        } catch (error) {
+            alert('Error: ' + error.message);
+        }
+    }
+
+    async function llmLabelFeature(feature, label) {
+        try {
+            const response = await fetch('/api/llm-label-feature/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    feature: feature,
+                    label: label,
+                    task_description: taskDescription
+                })
+            });
+
+            const result = await response.json();
+
+            if (result.status === 'success') {
+                alert(`✓ Feature "${feature}" labeled for "${label}"\\n` +
+                      `Relevant: ${result.relevant}\\n` +
+                      `Confidence: ${(result.confidence * 100).toFixed(1)}%\\n` +
+                      `Reasoning: ${result.reasoning}`);
+            } else {
+                alert('Error: ' + (result.detail || 'Failed to label feature'));
+            }
+        } catch (error) {
+            alert('Error: ' + error.message);
+        }
+    }
+
+    async function llmLabelAllFeatures(label, features) {
+        if (!confirm(`Label all ${features.length} features for class "${label}" with LLM?`)) {
+            return;
+        }
+
+        for (const featObj of features) {
+            await llmLabelFeature(featObj.feature, label);
+            await new Promise(resolve => setTimeout(resolve, 500));  // Rate limiting
+        }
+
+        alert('All features labeled!');
+        location.reload();
+    }
+
+    async function autoLabelAll() {
+        if (!confirm('Automatically label all instance queries with LLM? This may take a while.')) {
+            return;
+        }
+
+        const queries = {{ queries.instance_queries|safe }};
+
+        try {
+            const response = await fetch('/api/llm-auto-label-batch/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    queries: queries,
+                    labels: labels,
+                    task_description: taskDescription
+                })
+            });
+
+            const result = await response.json();
+
+            if (result.status === 'success') {
+                alert(`✓ Successfully labeled ${result.n_labeled} instances!`);
+                location.reload();
+            } else {
+                alert('Error: ' + (result.detail || 'Failed to auto-label'));
+            }
+        } catch (error) {
+            alert('Error: ' + error.message);
+        }
+    }
+</script>
+{% endblock %}

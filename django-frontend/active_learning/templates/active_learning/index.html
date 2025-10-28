@@ -1,0 +1,88 @@
+{% extends "active_learning/base.html" %}
+
+{% block title %}Dashboard - Dualist Active Learning{% endblock %}
+
+{% block content %}
+<h2>System Dashboard</h2>
+
+<div class="alert alert-info">
+    <strong>Welcome!</strong> This system combines traditional Active Learning with LLM-powered labeling for efficient text classification.
+</div>
+
+<h3>System Status</h3>
+
+<div class="card">
+    <div class="card-title">Backend Connection</div>
+    <p><strong>FastAPI URL:</strong> {{ fastapi_url }}</p>
+    <p><strong>Status:</strong>
+        {% if status.status == 'ok' %}
+            <span class="badge badge-success">Connected</span>
+        {% else %}
+            <span class="badge badge-error">Disconnected</span>
+        {% endif %}
+    </p>
+</div>
+
+<div class="card">
+    <div class="card-title">Model Status</div>
+    <p><strong>Classifier Initialized:</strong>
+        {% if status.classifier_initialized %}
+            <span class="badge badge-success">Yes</span>
+        {% else %}
+            <span class="badge badge-info">No</span>
+        {% endif %}
+    </p>
+    <p><strong>Pipeline Initialized:</strong>
+        {% if status.pipe_initialized %}
+            <span class="badge badge-success">Yes</span>
+        {% else %}
+            <span class="badge badge-info">No</span>
+        {% endif %}
+    </p>
+</div>
+
+<div class="card">
+    <div class="card-title">Data Statistics</div>
+    <p><strong>Labeled Instances:</strong> {{ status.n_labeled }}</p>
+    <p><strong>Unlabeled Pool:</strong> {{ status.n_pool }}</p>
+    <p><strong>Labeled Features:</strong> {{ status.n_labeled_features }}</p>
+</div>
+
+{% if status.model_stats %}
+<div class="card">
+    <div class="card-title">Model Details</div>
+    <p><strong>Number of Labels:</strong> {{ status.model_stats.n_labels }}</p>
+    <p><strong>Number of Features:</strong> {{ status.model_stats.n_features }}</p>
+    <p><strong>Training Instances:</strong> {{ status.model_stats.n_training_instances }}</p>
+    <p><strong>Alpha (Prior Weight):</strong> {{ status.model_stats.alpha }}</p>
+    {% if status.model_stats.labels %}
+    <p><strong>Labels:</strong> {{ status.model_stats.labels|join:", " }}</p>
+    {% endif %}
+</div>
+{% endif %}
+
+<h3>Quick Start</h3>
+
+<div style="margin-top: 20px;">
+    <ol>
+        <li><strong>Initialize:</strong> Set up the classifier and pipeline → <a href="{% url 'initialize' %}">Go to Initialize</a></li>
+        <li><strong>Load Data:</strong> Upload your training data → <a href="{% url 'load_data' %}">Go to Load Data</a></li>
+        <li><strong>Active Learning:</strong> Let the LLM help label instances → <a href="{% url 'active_learning_loop' %}">Start Learning</a></li>
+        <li><strong>Evaluate:</strong> Check model performance → <a href="{% url 'evaluate' %}">Evaluate Model</a></li>
+        <li><strong>Predict:</strong> Classify new texts → <a href="{% url 'predict' %}">Make Predictions</a></li>
+    </ol>
+</div>
+
+<h3>How It Works</h3>
+
+<div class="card">
+    <p><strong>Active Learning + LLM Synergy:</strong></p>
+    <ol>
+        <li>The system selects the most informative instances using uncertainty sampling</li>
+        <li>Instead of manual labeling, an LLM (via Langchain) labels these instances</li>
+        <li>The Naive Bayes classifier learns from LLM-labeled data</li>
+        <li>Feature labeling also uses LLM to identify discriminative terms</li>
+        <li>This hybrid approach reduces LLM inference costs while maintaining high accuracy</li>
+    </ol>
+</div>
+{% endblock %}

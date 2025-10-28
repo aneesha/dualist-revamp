@@ -1,0 +1,68 @@
+{% extends "active_learning/base.html" %}
+
+{% block title %}Evaluate Model{% endblock %}
+
+{% block content %}
+<h2>Model Evaluation</h2>
+
+<div class="alert alert-info">
+    Evaluate the current model on the remaining unlabeled pool (using hidden labels for testing).
+</div>
+
+<button onclick="location.href='?'" class="btn">Run Evaluation</button>
+
+{% if evaluation %}
+<div style="margin-top: 30px;">
+    {% if evaluation.status == 'success' %}
+    <h3>Evaluation Results</h3>
+
+    <div class="card">
+        <div class="card-title">Overall Performance</div>
+        <p><strong>Test Instances:</strong> {{ evaluation.n_test_instances }}</p>
+        <p><strong>Accuracy:</strong> {{ evaluation.metrics.accuracy|floatformat:4 }}</p>
+        <p><strong>Macro F1:</strong> {{ evaluation.metrics.macro_f1|floatformat:4 }}</p>
+        <p><strong>Macro Precision:</strong> {{ evaluation.metrics.macro_precision|floatformat:4 }}</p>
+        <p><strong>Macro Recall:</strong> {{ evaluation.metrics.macro_recall|floatformat:4 }}</p>
+        <p><strong>Weighted F1:</strong> {{ evaluation.metrics.weighted_f1|floatformat:4 }}</p>
+    </div>
+
+    <h4>Per-Label F1 Scores</h4>
+    <div class="card">
+        <ul>
+            {% for key, value in evaluation.metrics.items %}
+            {% if 'f1_' in key and key != 'f1' and key != 'macro_f1' and key != 'weighted_f1' %}
+            <li><strong>{{ key|slice:"3:" }}:</strong> {{ value|floatformat:4 }}</li>
+            {% endif %}
+            {% endfor %}
+        </ul>
+    </div>
+
+    {% elif evaluation.status == 'no_data' %}
+    <div class="alert alert-info">
+        {{ evaluation.message }}
+    </div>
+    {% else %}
+    <div class="alert alert-error">
+        Error: {{ evaluation.detail }}
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+
+<h3 style="margin-top: 40px;">About Evaluation</h3>
+
+<div class="card">
+    <p>This evaluation tests the model on the remaining unlabeled pool using their hidden true labels.
+    In a real deployment, you would evaluate on a separate held-out test set.</p>
+
+    <p><strong>Metrics Explained:</strong></p>
+    <ul>
+        <li><strong>Accuracy:</strong> Percentage of correct predictions</li>
+        <li><strong>Precision:</strong> Of predicted positives, how many are correct</li>
+        <li><strong>Recall:</strong> Of actual positives, how many are found</li>
+        <li><strong>F1:</strong> Harmonic mean of precision and recall</li>
+        <li><strong>Macro F1:</strong> Average F1 across all classes (equal weight)</li>
+        <li><strong>Weighted F1:</strong> Average F1 weighted by class frequency</li>
+    </ul>
+</div>
+{% endblock %}
